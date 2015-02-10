@@ -48,7 +48,7 @@ class KompasUserProvider implements UserProviderInterface {
      */
     public function retrieveByCredentials(array $credentials)
     {
-        if ($this->sharedSession)) {
+        if ($this->sharedSession) {
 
             $userinfo = $this->sharedSession['currentUser'];
 
@@ -99,7 +99,7 @@ class KompasUserProvider implements UserProviderInterface {
             ini_set('session.cookie_domain', '.kompasiana.com'); // enable all sub domain
 
             $redis = Redis::connection('accounts-session');
-            $handler = new Snc\RedisBundle\Session\Storage\Handler\RedisSessionHandler($redis, [], 'accounts_session');
+            $handler = new \Snc\RedisBundle\Session\Storage\Handler\RedisSessionHandler($redis, [], 'accounts_session');
             session_set_save_handler(
                 array($handler, 'open'),
                 array($handler, 'close'),
@@ -125,7 +125,7 @@ class KompasUserProvider implements UserProviderInterface {
             }
 
             // strip the querystring from the current URL
-            $url = rtrim(URL::full());
+            $url = rtrim(URL::to('/'));
 
             return Redirect::to(filter_var($url, FILTER_SANITIZE_URL));
         }
