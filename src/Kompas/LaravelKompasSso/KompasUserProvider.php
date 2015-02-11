@@ -69,7 +69,7 @@ class KompasUserProvider implements UserProviderInterface {
         return false;
     }
 
-    public function getAuthUrl() {
+    public function getLoginUrl() {
         return "http://accounts.kompas.com/service_signin?continue=" . urlencode("http://beta.kompasiana.com") . "&client_id=1332276278";
     }
 
