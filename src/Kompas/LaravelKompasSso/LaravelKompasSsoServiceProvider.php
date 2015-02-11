@@ -48,7 +48,7 @@ class LaravelKompasSsoServiceProvider extends AuthServiceProvider {
             ini_set('session.cookie_domain', '.kompasiana.com'); // enable all sub domain
 
             $redis = Redis::connection('accounts-session');
-            $handler = new RedisSessionHandler($redis, [], 'accounts_session');
+            $handler = new RedisSessionHandler($redis, array(), 'accounts_session');
             session_set_save_handler(
                 array($handler, 'open'),
                 array($handler, 'close'),

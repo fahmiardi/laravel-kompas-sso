@@ -16,11 +16,43 @@ class KompasUserProvider implements UserProviderInterface {
     public function __construct()
     {
         $this->sharedSession = null;
+        $sessionId = null;
+        App::make('accounts-session');
 
-        if (Session::has($this->getTokenName())) {
-            $this->sharedSession['userToken'] = Session::get('userToken');
-            $this->sharedSession['currentUser'] = Session::get('currentUser');
+        if (isset($_GET[$this->getTokenName()])) {
+            if ($_GET[$this->getTokenName()]) {
+                $sessionId = $_GET[$this->getTokenName()];
+            }
+        } else if (Session::has($this->getTokenName())) {
+            $sessionId = Session::get($this->getTokenName());
+
+            if (isset($_COOKIE[$this->getTokenName()])) {
+                if ($_COOKIE[$this->getTokenName()]) {
+                    if ($_COOKIE[$this->getTokenName()] == $sessionId) {
+                        $sessionId = $_COOKIE[$this->getTokenName()];
+                    }
+                }
+            }
         }
+
+        session_name(strtoupper($this->getTokenName()));
+        session_id($sessionId);
+        session_start();
+
+        $userToken = isset($_SESSION['userToken']) ? json_decode($_SESSION['userToken'], true) : false;
+        $currentUser = isset($_SESSION['currentUser']) ? json_decode($_SESSION['currentUser'], true) : false;
+
+        if ($userToken !== false && $currentUser !== false) {
+
+            Session::put($this->getTokenName(), $sessionId);
+
+            $this->sharedSession = array(
+                'userToken' => $userToken,
+                'currentUser' => $currentUser
+            );
+
+        }
+
     }
 
     public function retrieveByToken( $identifier, $token ){}
@@ -51,6 +83,7 @@ class KompasUserProvider implements UserProviderInterface {
         if ($this->sharedSession) {
 
             $userinfo = $this->sharedSession['currentUser'];
+            $userinfo['accessToken'] = $this->sharedSession['userToken'];
 
             return new GenericUser($userinfo);
         }
@@ -70,7 +103,7 @@ class KompasUserProvider implements UserProviderInterface {
     }
 
     public function getLoginUrl() {
-        return "http://accounts.kompas.com/service_signin?continue=" . urlencode("http://beta.kompasiana.com") . "&client_id=1332276278";
+        return "http://accounts.kompas.com/service_signin";
     }
 
 
@@ -84,53 +117,9 @@ class KompasUserProvider implements UserProviderInterface {
         return 'kmpsid';
     }
 
-    /**
-     * If this request is the redirect from a successful authorization grant, store the access token in the session
-     * and return a Laravel redirect Response to send the user to their requested page. Otherwise returns null
-     * @return Response or null
-     */
-    public function finishAuthenticationIfRequired()
+
+    public function destroy()
     {
-        if (isset($_GET[$this->getTokenName()])) {
-
-            // register handler redis
-            ini_set('session.gc_maxlifetime', 25200); // 1 week
-            ini_set('session.cookie_httponly', true); // enable httponly
-            ini_set('session.cookie_domain', '.kompasiana.com'); // enable all sub domain
-
-            $redis = Redis::connection('accounts-session');
-            $handler = new \Snc\RedisBundle\Session\Storage\Handler\RedisSessionHandler($redis, [], 'accounts_session');
-            session_set_save_handler(
-                array($handler, 'open'),
-                array($handler, 'close'),
-                array($handler, 'read'),
-                array($handler, 'write'),
-                array($handler, 'destroy'),
-                array($handler, 'gc')
-            );
-            register_shutdown_function('session_write_close');
-            session_name(strtoupper($this->getTokenName()));
-            session_id($_GET[$this->getTokenName()]);
-            session_start();
-
-            $userToken = isset($_SESSION['userToken']) ? json_decode($_SESSION['userToken'], true) : false;
-            $currentUser = isset($_SESSION['currentUser']) ? json_decode($_SESSION['currentUser'], true) : false;
-
-            if ($userToken !== false && $currentUser !== false) {
-
-                Session::put('userToken', $userToken);
-                Session::put('currentUser', $currentUser);
-                Session::put($this->getTokenName(), $_GET[$this->getTokenName()]);
-
-            }
-
-            // strip the querystring from the current URL
-            $url = rtrim(URL::to('/'));
-
-            return Redirect::to(filter_var($url, FILTER_SANITIZE_URL));
-        }
-
-        return null;
+        session_destroy();
     }
-
 }
